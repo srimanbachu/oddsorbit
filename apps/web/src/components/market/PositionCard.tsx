@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatBtc, WBTC_DECIMALS } from "@oddsorbit/shared";
 import { useClient } from "../../lib/solana";
 import type { Position } from "../../hooks/usePositions";
+import { env } from "../../env";
 
 interface Props {
   position: Position;
@@ -30,6 +31,7 @@ export function PositionCard({ position }: Props) {
       return client.claimWinnings({
         market: position.market,
         winningOutcome: winningSide,
+        collateralMint: env.wbtcMint,
       });
     },
     onSuccess: () => {

@@ -3,6 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClient } from "../../lib/solana";
 import { toBaseUnits, WBTC_DECIMALS, type Outcome } from "@oddsorbit/shared";
+import { env } from "../../env";
 
 type Side = Extract<Outcome, "Yes" | "No">;
 type Mode = "Buy" | "Sell";
@@ -34,10 +35,20 @@ export function TradePanel({ market }: Props) {
     try {
       const baseUnits = toBaseUnits(parsed, WBTC_DECIMALS);
       if (mode === "Buy") {
-        await client.buyShares({ market, outcome, amount: baseUnits });
+        await client.buyShares({
+          market,
+          outcome,
+          amount: baseUnits,
+          collateralMint: env.wbtcMint,
+        });
         setSuccess(`Bought ${parsed} ${outcome} shares.`);
       } else {
-        await client.sellShares({ market, outcome, shares: baseUnits });
+        await client.sellShares({
+          market,
+          outcome,
+          shares: baseUnits,
+          collateralMint: env.wbtcMint,
+        });
         setSuccess(`Sold ${parsed} ${outcome} shares.`);
       }
       queryClient.invalidateQueries({ queryKey: ["positions"] });

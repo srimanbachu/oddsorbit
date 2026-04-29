@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClient } from "../lib/solana";
 import { findMarketPda } from "@oddsorbit/sdk";
+import { env } from "../env";
 
 const FIVE_MINUTES_SECONDS = 5 * 60;
 
@@ -48,6 +49,7 @@ export function CreateMarketPage() {
         question: trimmed,
         endTs,
         nonce,
+        collateralMint: env.wbtcMint,
       });
 
       setStatus({ kind: "success", signature });
