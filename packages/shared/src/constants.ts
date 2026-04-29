@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 
 // Placeholder — replace with actual deployed program ID via `anchor keys sync`.
 export const PROGRAM_ID = new PublicKey(
-  "11111111111111111111111111111111",
+  "BZRLQZVwVH25LzS9yec1mPjo6GwX8jXxkpMJ2Q5YduSN",
 );
 
 // wBTC on Solana (Wormhole-wrapped). Override via env in production.

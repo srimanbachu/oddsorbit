@@ -22,7 +22,6 @@ export interface WalletLike {
 }
 
 export class PredictionMarketClient {
-  // Typed loosely until the IDL is generated via `bun run sdk:generate`.
   readonly program: Program<Idl>;
   readonly provider: AnchorProvider;
 
@@ -31,6 +30,21 @@ export class PredictionMarketClient {
       commitment: "confirmed",
     });
     this.program = new Program(idlJson as Idl, this.provider);
+
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.log("[oddsorbit] program.methods:", Object.keys(this.program.methods ?? {}));
+      // eslint-disable-next-line no-console
+      console.log("[oddsorbit] programId:", this.program.programId.toBase58());
+    }
+  }
+
+  // Anchor builds the methods namespace as a Proxy where each call returns a
+  // new MethodsBuilder. We must call `this.program.methods.<name>(...)`
+  // directly — destructuring or storing the method in a local breaks the
+  // proxy's `this` binding and yields "method is not a function".
+  private get m(): any {
+    return this.program.methods;
   }
 
   async createMarket(params: {
@@ -46,12 +60,8 @@ export class PredictionMarketClient {
     const [yesMint] = findYesMintPda(market);
     const [noMint] = findNoMintPda(market);
 
-    const methods = (this.program.methods as any).createMarket;
-    return methods(
-      params.question,
-      new BN(params.endTs),
-      new BN(params.nonce.toString()),
-    )
+    return this.m
+      .createMarket(params.question, new BN(params.endTs), new BN(params.nonce.toString()))
       .accounts({
         creator,
         market,
@@ -85,8 +95,8 @@ export class PredictionMarketClient {
     ];
 
     const outcomeArg = { [params.outcome.toLowerCase()]: {} };
-    const methods = (this.program.methods as any).buyShares;
-    return methods(outcomeArg, new BN(params.amount.toString()))
+    return this.m
+      .buyShares(outcomeArg, new BN(params.amount.toString()))
       .accounts({
         user,
         market: params.market,
@@ -95,6 +105,87 @@ export class PredictionMarketClient {
         yesMint,
         noMint,
         userOutcomeAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .preInstructions(pre)
+      .rpc();
+  }
+
+  async sellShares(params: {
+    market: PublicKey;
+    outcome: Extract<Outcome, "Yes" | "No">;
+    shares: bigint;
+    collateralMint?: PublicKey;
+  }): Promise<string> {
+    const user = this.provider.publicKey!;
+    const collateralMint = params.collateralMint ?? WBTC_MINT;
+    const [vault] = findVaultPda(params.market);
+    const [yesMint] = findYesMintPda(params.market);
+    const [noMint] = findNoMintPda(params.market);
+    const outcomeMint = params.outcome === "Yes" ? yesMint : noMint;
+
+    const userCollateralAta = getAssociatedTokenAddressSync(collateralMint, user);
+    const userOutcomeAta = getAssociatedTokenAddressSync(outcomeMint, user);
+
+    const pre: TransactionInstruction[] = [
+      createAssociatedTokenAccountIdempotentInstruction(
+        user,
+        userCollateralAta,
+        user,
+        collateralMint,
+      ),
+    ];
+
+    const outcomeArg = { [params.outcome.toLowerCase()]: {} };
+    return this.m
+      .sellShares(outcomeArg, new BN(params.shares.toString()))
+      .accounts({
+        user,
+        market: params.market,
+        vault,
+        userCollateralAta,
+        yesMint,
+        noMint,
+        userOutcomeAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .preInstructions(pre)
+      .rpc();
+  }
+
+  async claimWinnings(params: {
+    market: PublicKey;
+    winningOutcome: Extract<Outcome, "Yes" | "No">;
+    collateralMint?: PublicKey;
+  }): Promise<string> {
+    const user = this.provider.publicKey!;
+    const collateralMint = params.collateralMint ?? WBTC_MINT;
+    const [vault] = findVaultPda(params.market);
+    const [yesMint] = findYesMintPda(params.market);
+    const [noMint] = findNoMintPda(params.market);
+    const winningMint = params.winningOutcome === "Yes" ? yesMint : noMint;
+
+    const userCollateralAta = getAssociatedTokenAddressSync(collateralMint, user);
+    const userWinningAta = getAssociatedTokenAddressSync(winningMint, user);
+
+    const pre: TransactionInstruction[] = [
+      createAssociatedTokenAccountIdempotentInstruction(
+        user,
+        userCollateralAta,
+        user,
+        collateralMint,
+      ),
+    ];
+
+    return this.m
+      .claimWinnings()
+      .accounts({
+        user,
+        market: params.market,
+        vault,
+        userCollateralAta,
+        winningMint,
+        userWinningAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .preInstructions(pre)

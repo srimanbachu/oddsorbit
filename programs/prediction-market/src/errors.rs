@@ -20,4 +20,14 @@ pub enum MarketError {
     MathOverflow,
     #[msg("Unauthorized")]
     Unauthorized,
+    #[msg("Nothing to claim")]
+    NothingToClaim,
+    #[msg("Cannot claim on an invalid/unresolved market")]
+    NotClaimable,
+    #[msg("Provided mint does not match the winning outcome")]
+    WrongWinningMint,
+    #[msg("User does not hold enough shares")]
+    InsufficientShares,
+    #[msg("Amount must be greater than zero")]
+    ZeroAmount,
 }
